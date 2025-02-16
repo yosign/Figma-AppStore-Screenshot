@@ -1,4 +1,4 @@
-# Figma App Store Screenshot Plugin
+# AppStore Screenshot Hunter
 
 一个 Figma 插件，用于自动获取和布局 App Store 应用的截图。
 
@@ -6,7 +6,7 @@
 
 - 支持通过应用名称或 App ID 搜索应用
 - 自动获取高分辨率应用截图
-- 支持多个数据源（App Store API、七麦数据）
+- 支持多个数据源（App Store API、iTunes Search API）
 - 自动创建美观的布局
 - 实时显示下载进度
 - 支持自定义图标尺寸和间距
@@ -27,24 +27,6 @@
 - Node.js
 - Figma Desktop App
 - Figma Plugin API
-
-### 安装
-
-```bash
-npm install
-```
-
-### 构建
-
-```bash
-npm run build
-```
-
-### 开发模式
-
-```bash
-npm run watch
-```
 
 ## 许可证
 
