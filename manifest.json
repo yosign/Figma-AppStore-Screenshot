@@ -1,11 +1,12 @@
 {
   "name": "AppStore Screenshot Hunter",
-  "id": "1234567890",
+  "id": "1472995870315092525",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
   "permissions": ["payments"],
+  "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": [
       "https://itunes.apple.com",

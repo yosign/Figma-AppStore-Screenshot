@@ -12,21 +12,120 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 figma.showUI(__html__, { width: 300, height: 400, title: "AppStore Screenshot Hunter" });
 // 付费相关配置
 const PAYMENT_CONFIG = {
-    price: 4.99,
-    name: 'Super Screenshot Pro'
+    price: 2,
+    name: 'AppStore Hunter Pro'
 };
 // 免费使用次数限制
 const FREE_USAGE_LIMIT = 3;
 // 存储键名
 const STORAGE_KEYS = {
     USAGE_COUNT: 'screenshot_usage_count',
-    SUBSCRIPTION_STATUS: 'subscription_status'
+    SUBSCRIPTION_STATUS: 'subscription_status',
+    LANGUAGE: 'preferred_language'  // 新增语言存储键
+};
+// 多语言配置
+const i18n = {
+  'zh-CN': {
+    title: 'AppStore 截图采集',
+    search: {
+      label: '应用搜索',
+      placeholder: '输入应用名称或 App ID'
+    },
+    region: {
+      label: 'App Store 地区',
+      options: {
+        us: '美国',
+        cn: '中国',
+        gb: '英国',
+        jp: '日本',
+        kr: '韩国'
+      }
+    },
+    layout: {
+      iconSize: '图标尺寸',
+      spacing: '间距',
+      screenshotWidth: '截图宽度'
+    },
+    button: {
+      collect: '采集包装',
+      subscribe: '订阅解锁',
+      reset: '重置订阅'
+    },
+    subscription: {
+      valid: '订阅有效',
+      freeUsage: '免费使用次数还剩 ',
+      exceeded: '已超出免费使用次数限制，请订阅以继续使用',
+      resetConfirm: '确定要重置订阅状态吗？这将清除所有订阅数据和使用记录。',
+      success: '订阅成功！',
+      failed: '订阅失败，请重试',
+      resetSuccess: '订阅状态已重置',
+      resetFailed: '重置订阅状态失败，请重试'
+    },
+    progress: {
+      processing: '正在处理...',
+      fetchingData: '正在获取应用数据...',
+      downloadingScreenshots: '开始下载截图...',
+      complete: '采集包装完成！'
+    },
+    error: {
+      selectApp: '请先选择一个应用',
+      checkPermission: '检查使用权限时出错'
+    }
+  },
+  'en-US': {
+    title: 'AppStore Screenshot Hunter',
+    search: {
+      label: 'Search App',
+      placeholder: 'Enter app name or App ID'
+    },
+    region: {
+      label: 'App Store Region',
+      options: {
+        us: 'United States',
+        cn: 'China',
+        gb: 'United Kingdom',
+        jp: 'Japan',
+        kr: 'Korea'
+      }
+    },
+    layout: {
+      iconSize: 'Icon Size',
+      spacing: 'Spacing',
+      screenshotWidth: 'Screenshot Width'
+    },
+    button: {
+      collect: 'Collect',
+      subscribe: 'Subscribe',
+      reset: 'Reset Subscription'
+    },
+    subscription: {
+      valid: 'Subscription Valid',
+      freeUsage: 'Free Usage Remaining: ',
+      exceeded: 'Free usage limit exceeded, please subscribe to continue',
+      resetConfirm: 'Are you sure you want to reset subscription status? This will clear all subscription data and usage records.',
+      success: 'Subscription Successful!',
+      failed: 'Subscription Failed, Please Try Again',
+      resetSuccess: 'Subscription Status Reset',
+      resetFailed: 'Failed to Reset Subscription Status'
+    },
+    progress: {
+      processing: 'Processing...',
+      fetchingData: 'Fetching app data...',
+      downloadingScreenshots: 'Downloading screenshots...',
+      complete: 'Collection complete!'
+    },
+    error: {
+      selectApp: 'Please select an app first',
+      checkPermission: 'Error checking permission status'
+    }
+  }
 };
 // 检查用户的使用权限
 async function checkUsagePermission() {
     try {
-        // 获取当前使用次数
+        // 获取当前使用次数和语言设置
         const usageCount = await figma.clientStorage.getAsync(STORAGE_KEYS.USAGE_COUNT) || 0;
+        const currentLang = await getCurrentLanguage();
         
         // 检查订阅状态
         const subscriptionStatus = await figma.clientStorage.getAsync(STORAGE_KEYS.SUBSCRIPTION_STATUS);
@@ -35,7 +134,7 @@ async function checkUsagePermission() {
         if (subscriptionStatus && subscriptionStatus.isActive) {
             return {
                 canUse: true,
-                message: '订阅有效'
+                message: i18n[currentLang].subscription.valid
             };
         }
         
@@ -43,20 +142,20 @@ async function checkUsagePermission() {
         if (usageCount < FREE_USAGE_LIMIT) {
             return {
                 canUse: true,
-                message: `免费使用次数还剩 ${FREE_USAGE_LIMIT - usageCount} 次`
+                message: `${i18n[currentLang].subscription.freeUsage}${FREE_USAGE_LIMIT - usageCount}`
             };
         }
         
         // 超出免费使用次数限制
         return {
             canUse: false,
-            message: '已超出免费使用次数限制，请订阅以继续使用'
+            message: i18n[currentLang].subscription.exceeded
         };
     } catch (error) {
         console.error('检查使用权限时出错:', error);
         return {
             canUse: false,
-            message: '检查使用权限时出错'
+            message: i18n[currentLang].error.checkPermission
         };
     }
 }
@@ -241,44 +340,44 @@ function getQimaiScreenshots(appId_1) {
 // 获取 App Store 应用数据的函数
 function getAppStoreData(appId_1) {
     return __awaiter(this, arguments, void 0, function* (appId, country = 'us') {
-        try {
-            const baseUrl = 'https://itunes.apple.com/lookup';
-            const params = [
-                `id=${appId}`,
-                `country=${country}`,
-                'entity=software',
-                'limit=1',
-                'media=software',
-                'platform=iphone',
+  try {
+    const baseUrl = 'https://itunes.apple.com/lookup';
+    const params = [
+      `id=${appId}`,
+      `country=${country}`,
+      'entity=software',
+      'limit=1',
+      'media=software',
+      'platform=iphone',
                 'lang=en_us',
                 'version=2'
-            ].join('&');
-            const requestUrl = `${baseUrl}?${params}`;
-            console.log('Fetching from URL:', requestUrl);
+    ].join('&');
+    const requestUrl = `${baseUrl}?${params}`;
+    console.log('Fetching from URL:', requestUrl);
             // 使用全局 fetch API
             const response = yield fetch(requestUrl);
             const data = yield response.json();
-            console.log('Raw API Response:', data);
-            if (!data.results || data.results.length === 0) {
-                throw new Error(`App not found for ID: ${appId}`);
-            }
-            const result = data.results[0];
+    console.log('Raw API Response:', data);
+    if (!data.results || data.results.length === 0) {
+      throw new Error(`App not found for ID: ${appId}`);
+    }
+    const result = data.results[0];
             // 检查是否有任何类型的截图
-            let selectedScreenshots = [];
+    let selectedScreenshots = [];
             let screenshotSource = ''; // 记录截图来源
             // 优先使用 iTunes API 返回的截图
-            if (result.screenshotUrls && result.screenshotUrls.length > 0) {
-                selectedScreenshots = result.screenshotUrls;
+    if (result.screenshotUrls && result.screenshotUrls.length > 0) {
+      selectedScreenshots = result.screenshotUrls;
                 screenshotSource = 'iTunes API iPhone';
                 console.log('Using iTunes API iPhone screenshots');
             }
             else if (result.ipadScreenshotUrls && result.ipadScreenshotUrls.length > 0) {
-                selectedScreenshots = result.ipadScreenshotUrls;
+      selectedScreenshots = result.ipadScreenshotUrls;
                 screenshotSource = 'iTunes API iPad';
                 console.log('Using iTunes API iPad screenshots');
             }
             else if (result.appletvScreenshotUrls && result.appletvScreenshotUrls.length > 0) {
-                selectedScreenshots = result.appletvScreenshotUrls;
+      selectedScreenshots = result.appletvScreenshotUrls;
                 screenshotSource = 'iTunes API Apple TV';
                 console.log('Using iTunes API Apple TV screenshots');
             }
@@ -326,152 +425,152 @@ function getAppStoreData(appId_1) {
                 }
             }
             // 处理截图URL，获取高分辨率版本
-            result.screenshotUrls = selectedScreenshots.map(url => {
+    result.screenshotUrls = selectedScreenshots.map(url => {
                 if (!url)
                     return null;
-                let processedUrl = url;
-                if (url.startsWith('//')) {
-                    processedUrl = 'https:' + url;
+      let processedUrl = url;
+      if (url.startsWith('//')) {
+        processedUrl = 'https:' + url;
                 }
                 else if (url.startsWith('http:')) {
-                    processedUrl = url.replace('http:', 'https:');
-                }
+        processedUrl = url.replace('http:', 'https:');
+      }
                 // 替换尺寸参数为高分辨率版本
-                return processedUrl.replace(/\d+x\d+bb/, '1290x2796bb');
-            }).filter(Boolean);
-            console.log('Processed app data:', {
-                name: result.trackName,
-                id: result.trackId,
-                screenshots: {
-                    count: (result.screenshotUrls && result.screenshotUrls.length) || 0,
-                    urls: result.screenshotUrls || []
-                },
-                icon: result.artworkUrl512
-            });
-            return result;
+      return processedUrl.replace(/\d+x\d+bb/, '1290x2796bb');
+    }).filter(Boolean);
+    console.log('Processed app data:', {
+      name: result.trackName,
+      id: result.trackId,
+      screenshots: {
+        count: (result.screenshotUrls && result.screenshotUrls.length) || 0,
+        urls: result.screenshotUrls || []
+      },
+      icon: result.artworkUrl512
+    });
+    return result;
         }
         catch (error) {
-            console.error('Error fetching app data:', error);
-            throw error;
-        }
+    console.error('Error fetching app data:', error);
+    throw error;
+  }
     });
 }
 // 创建布局的函数
 function createLayout(appData, config) {
     return __awaiter(this, void 0, void 0, function* () {
-        // 创建主 Frame
-        const frame = figma.createFrame();
+  // 创建主 Frame
+  const frame = figma.createFrame();
         frame.name = `${appData.trackId}`;
-        // 设置最小尺寸和默认间距
-        const MIN_SIZE = 0.01;
-        const TEXT_SPACING = 8; // 文本元素之间的间距
-        // 设置初始位置
-        let currentX = config.spacing;
-        let currentY = config.spacing;
-        // 创建图标容器 Frame
-        const iconContainer = figma.createFrame();
-        iconContainer.name = "Icon Container";
-        iconContainer.x = currentX;
-        iconContainer.y = currentY;
-        iconContainer.fills = [];
-        // 添加图标
+  // 设置最小尺寸和默认间距
+  const MIN_SIZE = 0.01;
+  const TEXT_SPACING = 8; // 文本元素之间的间距
+  // 设置初始位置
+  let currentX = config.spacing;
+  let currentY = config.spacing;
+  // 创建图标容器 Frame
+  const iconContainer = figma.createFrame();
+  iconContainer.name = "Icon Container";
+  iconContainer.x = currentX;
+  iconContainer.y = currentY;
+  iconContainer.fills = [];
+  // 添加图标
         const iconNode = yield figma.createImageAsync(appData.artworkUrl512);
-        const iconFrame = figma.createFrame();
-        iconFrame.name = "App Icon";
-        // 使用 256 作为默认图标尺寸
-        const iconSize = 256;
-        iconFrame.resize(iconSize, iconSize);
-        iconFrame.fills = [{
-                type: 'IMAGE',
-                imageHash: iconNode.hash,
-                scaleMode: 'FILL'
-            }];
-        iconFrame.cornerRadius = iconSize * 0.2237; // iOS 圆角比例
-        iconFrame.x = 0;
-        iconFrame.y = 0;
-        // 添加图标阴影效果
-        iconFrame.effects = [{
-                type: 'DROP_SHADOW',
-                color: { r: 0, g: 0, b: 0, a: 0.1 },
-                offset: { x: 0, y: 2 },
-                radius: 8,
-                visible: true,
-                blendMode: 'NORMAL'
-            }];
-        // 加载字体
+  const iconFrame = figma.createFrame();
+  iconFrame.name = "App Icon";
+  // 使用 256 作为默认图标尺寸
+  const iconSize = 256;
+  iconFrame.resize(iconSize, iconSize);
+  iconFrame.fills = [{
+    type: 'IMAGE',
+    imageHash: iconNode.hash,
+    scaleMode: 'FILL'
+  }];
+  iconFrame.cornerRadius = iconSize * 0.2237; // iOS 圆角比例
+  iconFrame.x = 0;
+  iconFrame.y = 0;
+  // 添加图标阴影效果
+  iconFrame.effects = [{
+    type: 'DROP_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: 0.1 },
+    offset: { x: 0, y: 2 },
+    radius: 8,
+    visible: true,
+    blendMode: 'NORMAL'
+  }];
+  // 加载字体
         yield figma.loadFontAsync({ family: "Inter", style: "Regular" });
         yield figma.loadFontAsync({ family: "Inter", style: "Bold" });
-        // 创建文本信息
-        const nameText = figma.createText();
-        nameText.characters = appData.trackName || 'Untitled App';
-        nameText.fontSize = 20;
-        nameText.fontName = { family: "Inter", style: "Bold" };
-        nameText.textAlignHorizontal = "LEFT";
-        nameText.textAutoResize = "WIDTH_AND_HEIGHT";
-        const devText = figma.createText();
-        devText.characters = appData.sellerName || 'Unknown Developer';
-        devText.fontSize = 14;
-        devText.textAlignHorizontal = "LEFT";
-        devText.textAutoResize = "WIDTH_AND_HEIGHT";
-        const metaText = figma.createText();
-        const rating = appData.averageUserRating ? appData.averageUserRating.toFixed(1) : 'N/A';
-        const version = appData.version || '1.0';
-        metaText.characters = `Version ${version} • Rating ${rating}`;
-        metaText.fontSize = 12;
-        metaText.textAlignHorizontal = "LEFT";
-        metaText.textAutoResize = "WIDTH_AND_HEIGHT";
-        // 定位文本
-        nameText.x = 0;
-        nameText.y = iconSize + TEXT_SPACING;
-        devText.x = 0;
-        devText.y = nameText.y + nameText.height + TEXT_SPACING;
-        metaText.x = 0;
-        metaText.y = devText.y + devText.height + TEXT_SPACING;
-        // 将所有元素添加到图标容器
-        iconContainer.appendChild(iconFrame);
-        iconContainer.appendChild(nameText);
-        iconContainer.appendChild(devText);
-        iconContainer.appendChild(metaText);
-        // 调整图标容器大小为最宽文本的宽度
+  // 创建文本信息
+  const nameText = figma.createText();
+  nameText.characters = appData.trackName || 'Untitled App';
+  nameText.fontSize = 20;
+  nameText.fontName = { family: "Inter", style: "Bold" };
+  nameText.textAlignHorizontal = "LEFT";
+  nameText.textAutoResize = "WIDTH_AND_HEIGHT";
+  const devText = figma.createText();
+  devText.characters = appData.sellerName || 'Unknown Developer';
+  devText.fontSize = 14;
+  devText.textAlignHorizontal = "LEFT";
+  devText.textAutoResize = "WIDTH_AND_HEIGHT";
+  const metaText = figma.createText();
+  const rating = appData.averageUserRating ? appData.averageUserRating.toFixed(1) : 'N/A';
+  const version = appData.version || '1.0';
+  metaText.characters = `Version ${version} • Rating ${rating}`;
+  metaText.fontSize = 12;
+  metaText.textAlignHorizontal = "LEFT";
+  metaText.textAutoResize = "WIDTH_AND_HEIGHT";
+  // 定位文本
+  nameText.x = 0;
+  nameText.y = iconSize + TEXT_SPACING;
+  devText.x = 0;
+  devText.y = nameText.y + nameText.height + TEXT_SPACING;
+  metaText.x = 0;
+  metaText.y = devText.y + devText.height + TEXT_SPACING;
+  // 将所有元素添加到图标容器
+  iconContainer.appendChild(iconFrame);
+  iconContainer.appendChild(nameText);
+  iconContainer.appendChild(devText);
+  iconContainer.appendChild(metaText);
+  // 调整图标容器大小为最宽文本的宽度
         const containerWidth = Math.max(iconSize, nameText.width, devText.width, metaText.width);
-        // 调整图标容器大小
+  // 调整图标容器大小
         iconContainer.resize(containerWidth, metaText.y + metaText.height);
-        // 将图标容器添加到主 Frame
-        frame.appendChild(iconContainer);
-        // 更新当前位置到截图区域
-        currentY = iconContainer.y + iconContainer.height + config.spacing;
-        // 创建截图容器
-        const screenshotsFrame = figma.createFrame();
-        screenshotsFrame.name = "Screenshots";
-        screenshotsFrame.x = currentX;
-        screenshotsFrame.y = currentY;
-        screenshotsFrame.fills = [];
-        // 添加截图
-        let screenshotX = 0;
-        console.log('Screenshots URLs:', appData.screenshotUrls);
-        if (appData.screenshotUrls.length === 0) {
-            // 如果没有截图，添加一个提示文本
+  // 将图标容器添加到主 Frame
+  frame.appendChild(iconContainer);
+  // 更新当前位置到截图区域
+  currentY = iconContainer.y + iconContainer.height + config.spacing;
+  // 创建截图容器
+  const screenshotsFrame = figma.createFrame();
+  screenshotsFrame.name = "Screenshots";
+  screenshotsFrame.x = currentX;
+  screenshotsFrame.y = currentY;
+  screenshotsFrame.fills = [];
+  // 添加截图
+  let screenshotX = 0;
+  console.log('Screenshots URLs:', appData.screenshotUrls);
+  if (appData.screenshotUrls.length === 0) {
+    // 如果没有截图，添加一个提示文本
             yield figma.loadFontAsync({ family: "Inter", style: "Regular" });
-            const noScreenshotsText = figma.createText();
-            noScreenshotsText.characters = "No screenshots available";
-            noScreenshotsText.fontSize = 14;
-            noScreenshotsText.x = 0;
-            noScreenshotsText.y = 0;
-            screenshotsFrame.appendChild(noScreenshotsText);
-            // 设置容器大小为文本大小
+    const noScreenshotsText = figma.createText();
+    noScreenshotsText.characters = "No screenshots available";
+    noScreenshotsText.fontSize = 14;
+    noScreenshotsText.x = 0;
+    noScreenshotsText.y = 0;
+    screenshotsFrame.appendChild(noScreenshotsText);
+    // 设置容器大小为文本大小
             screenshotsFrame.resize(Math.max(noScreenshotsText.width + config.spacing * 2, MIN_SIZE), Math.max(noScreenshotsText.height + config.spacing * 2, MIN_SIZE));
         }
         else {
-            // 计算合适的截图显示尺寸
-            const IPHONE_RATIO = 1290 / 2796; // iPhone 14 Pro Max 比例
-            const displayWidth = 375; // 设置一个合适的显示宽度
-            const displayHeight = displayWidth / IPHONE_RATIO;
+    // 计算合适的截图显示尺寸
+    const IPHONE_RATIO = 1290 / 2796; // iPhone 14 Pro Max 比例
+    const displayWidth = 375; // 设置一个合适的显示宽度
+    const displayHeight = displayWidth / IPHONE_RATIO;
             // 计算每张截图的进度增量
             const progressIncrement = 89 / appData.screenshotUrls.length; // 10-99%的范围分配给截图下载
             let currentProgress = 10; // 从10%开始
-            for (const url of appData.screenshotUrls) {
-                try {
-                    console.log('Processing screenshot URL:', url);
+    for (const url of appData.screenshotUrls) {
+      try {
+        console.log('Processing screenshot URL:', url);
                     // 更新进度消息
                     figma.ui.postMessage({
                         type: 'progress-update',
@@ -479,51 +578,51 @@ function createLayout(appData, config) {
                         message: `正在下载第 ${screenshotsFrame.children.length + 1}/${appData.screenshotUrls.length} 张截图...`
                     });
                     const screenshotNode = yield figma.createImageAsync(url);
-                    const screenshotFrame = figma.createFrame();
-                    screenshotFrame.name = `Screenshot ${screenshotsFrame.children.length + 1}`;
-                    // 使用预设的显示尺寸
-                    screenshotFrame.resize(displayWidth, displayHeight);
-                    // 设置图片填充
-                    screenshotFrame.fills = [{
-                            type: 'IMAGE',
-                            imageHash: screenshotNode.hash,
-                            scaleMode: 'FILL'
-                        }];
-                    // 设置圆角和阴影
-                    screenshotFrame.cornerRadius = 16;
-                    screenshotFrame.effects = [{
-                            type: 'DROP_SHADOW',
-                            color: { r: 0, g: 0, b: 0, a: 0.1 },
-                            offset: { x: 0, y: 2 },
-                            radius: 4,
-                            visible: true,
-                            blendMode: 'NORMAL'
-                        }];
-                    // 定位
-                    screenshotFrame.x = screenshotX;
-                    screenshotFrame.y = 0;
-                    screenshotsFrame.appendChild(screenshotFrame);
-                    screenshotX += displayWidth + config.spacing;
+        const screenshotFrame = figma.createFrame();
+        screenshotFrame.name = `Screenshot ${screenshotsFrame.children.length + 1}`;
+        // 使用预设的显示尺寸
+        screenshotFrame.resize(displayWidth, displayHeight);
+        // 设置图片填充
+        screenshotFrame.fills = [{
+          type: 'IMAGE',
+          imageHash: screenshotNode.hash,
+          scaleMode: 'FILL'
+        }];
+        // 设置圆角和阴影
+        screenshotFrame.cornerRadius = 16;
+        screenshotFrame.effects = [{
+          type: 'DROP_SHADOW',
+          color: { r: 0, g: 0, b: 0, a: 0.1 },
+          offset: { x: 0, y: 2 },
+          radius: 4,
+          visible: true,
+          blendMode: 'NORMAL'
+        }];
+        // 定位
+        screenshotFrame.x = screenshotX;
+        screenshotFrame.y = 0;
+        screenshotsFrame.appendChild(screenshotFrame);
+        screenshotX += displayWidth + config.spacing;
                     // 更新进度
                     currentProgress += progressIncrement;
                 }
                 catch (error) {
-                    console.error('加载截图失败:', error, url);
-                    continue;
-                }
-            }
-            // 调整截图容器大小
-            const containerWidth = screenshotX - config.spacing;
-            const containerHeight = displayHeight;
+        console.error('加载截图失败:', error, url);
+        continue;
+      }
+    }
+    // 调整截图容器大小
+    const containerWidth = screenshotX - config.spacing;
+    const containerHeight = displayHeight;
             screenshotsFrame.resize(Math.max(containerWidth, MIN_SIZE), Math.max(containerHeight, MIN_SIZE));
-        }
-        // 将所有元素添加到主 Frame
-        frame.appendChild(screenshotsFrame);
-        // 调整主 Frame 大小
+  }
+  // 将所有元素添加到主 Frame
+  frame.appendChild(screenshotsFrame);
+  // 调整主 Frame 大小
         const frameWidth = Math.max(screenshotsFrame.width + config.spacing * 2, iconContainer.width + config.spacing * 2, MIN_SIZE);
         const frameHeight = Math.max(screenshotsFrame.y + screenshotsFrame.height + config.spacing, MIN_SIZE);
-        frame.resize(frameWidth, frameHeight);
-        return frame;
+  frame.resize(frameWidth, frameHeight);
+  return frame;
     });
 }
 // 测试环境重置订阅状态
@@ -537,21 +636,62 @@ async function resetSubscriptionStatus() {
         return false;
     }
 }
+// 获取当前语言
+async function getCurrentLanguage() {
+    try {
+        const lang = await figma.clientStorage.getAsync(STORAGE_KEYS.LANGUAGE);
+        return lang || 'zh-CN';
+    } catch (error) {
+        console.error('获取语言设置失败:', error);
+        return 'zh-CN';
+    }
+}
+// 设置语言
+async function setLanguage(lang) {
+    try {
+        await figma.clientStorage.setAsync(STORAGE_KEYS.LANGUAGE, lang);
+        return true;
+    } catch (error) {
+        console.error('保存语言设置失败:', error);
+        return false;
+    }
+}
 // 监听 UI 消息
 figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
-    if (msg.type === 'reset-subscription') {
+    if (msg.type === 'get-language') {
+        // 获取当前语言
+        const currentLang = yield getCurrentLanguage();
+        figma.ui.postMessage({
+            type: 'language-update',
+            lang: currentLang,
+            translations: i18n[currentLang]  // 发送对应语言的翻译数据
+        });
+    } else if (msg.type === 'set-language') {
+        // 设置新语言
+        const success = yield setLanguage(msg.lang);
+        if (success) {
+            figma.ui.postMessage({
+                type: 'language-update',
+                lang: msg.lang,
+                translations: i18n[msg.lang]  // 发送新语言的翻译数据
+            });
+        }
+    } else if (msg.type === 'reset-subscription') {
         const success = yield resetSubscriptionStatus();
         figma.ui.postMessage({
             type: 'reset-subscription-result',
-            success
+            success,
+            message: success ? i18n[yield getCurrentLanguage()].subscription.resetSuccess : i18n[yield getCurrentLanguage()].subscription.resetFailed
         });
         if (success) {
             // 重新检查权限状态
             const permissionStatus = yield checkUsagePermission();
+            const currentLang = yield getCurrentLanguage();
             figma.ui.postMessage({
                 type: 'permission-status',
                 canUse: permissionStatus.canUse,
-                message: permissionStatus.message
+                message: permissionStatus.message,
+                translations: i18n[currentLang]
             });
         }
     } else if (msg.type === 'check-permission') {
@@ -638,11 +778,35 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             figma.notify('采集包装完成！');
         }
         catch (error) {
-            figma.ui.postMessage({
-                type: 'error',
-                message: error.message
-            });
-            figma.notify('发生错误: ' + error.message);
+      figma.ui.postMessage({
+        type: 'error',
+        message: error.message
+      });
+      figma.notify('发生错误: ' + error.message);
+    }
+    } else if (msg.type === 'reset-subscription-result') {
+        if (msg.success) {
+            alert('订阅状态已重置');
+            checkPermission(); // 刷新权限状态
+        } else {
+            alert('重置订阅状态失败，请重试');
         }
+    } else if (msg.type === 'activate-subscription') {
+        (async () => {
+            // 直接设置永久会员
+            await figma.clientStorage.setAsync(STORAGE_KEYS.SUBSCRIPTION_STATUS, {
+                isActive: true,
+                purchaseDate: new Date().toISOString(),
+                isPermanent: true  // 标记为永久会员
+            });
+            
+            // 刷新权限状态
+            const permissionStatus = await checkUsagePermission();
+            figma.ui.postMessage({
+                type: 'permission-status',
+                canUse: permissionStatus.canUse,
+                message: permissionStatus.message
+            });
+        })();
     }
 });

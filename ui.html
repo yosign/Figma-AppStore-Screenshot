@@ -16,7 +16,7 @@
         padding: 8px;
       }
       .container {
-        padding: 0 8px;
+        padding: 0 24px;
         max-width: 900px;
         margin: 0 auto;
       }
@@ -149,9 +149,90 @@
         padding: 3px 8px;
         font-size: 12px;
       }
+      /* 语言切换按钮样式 */
+      .lang-switch {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        z-index: 1000;
+      }
+      .lang-switch .btn {
+        width: auto;
+        margin-top: 0;
+        padding: 4px 8px;
+        height: 24px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .lang-switch .dropdown-menu {
+        min-width: 120px;
+        font-size: 12px;
+        margin-top: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .lang-switch .dropdown-item {
+        padding: 6px 12px;
+      }
+      .lang-switch .dropdown-item:hover {
+        background-color: #f8f9fa;
+      }
+      .lang-switch .dropdown-item.active {
+        background-color: #e9ecef;
+        color: #000;
+      }
+      .lang-switch .bi {
+        font-size: 14px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+      }
+      /* 隐藏点击区域样式 */
+      #secretArea {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        width: 25px;
+        height: 25px;
+        z-index: 9999;
+        cursor: default;
+      }
     </style>
   </head>
   <body>
+    <!-- 添加激活码输入模态框 -->
+    <div class="modal fade" id="activationModal" tabindex="-1" aria-labelledby="activationModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="activationModalLabel">输入激活码</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="text" class="form-control" id="activationCodeInput" placeholder="请输入激活码">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary w-100" id="activateButton">激活</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 添加隐藏的点击区域 -->
+    <div id="secretArea"></div>
+    <!-- 语言切换按钮 -->
+    <div class="lang-switch">
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="langSwitch" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-globe"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langSwitch">
+          <li><button class="dropdown-item" onclick="handleLanguageChange('zh-CN')">中文</button></li>
+          <li><button class="dropdown-item" onclick="handleLanguageChange('en-US')">English</button></li>
+        </ul>
+      </div>
+    </div>
     <div class="container my-4">
       <!-- 搜索输入组 -->
       <div class="mb-3">
@@ -231,8 +312,11 @@
       </div>
     </div>
 
+    <!-- 引入 Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- 引入 Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 主要插件逻辑 -->
     <script>
       // 获取 DOM 元素
       const searchInput = document.getElementById('searchInput');
@@ -413,9 +497,11 @@
               usageInfo.innerHTML = `
                 <div class="d-flex align-items-center justify-content-center">
                   <small class="text-success">${msg.message}</small>
+                  <!-- 暂时注释掉重置订阅按钮
                   <button class="btn btn-sm btn-outline-danger ms-2" onclick="resetSubscription()">
                     重置订阅
                   </button>
+                  -->
                 </div>
               `;
               createLayoutBtn.textContent = '采集包装';
@@ -451,6 +537,160 @@
 
       // 初始检查权限
       checkPermission();
+    </script>
+    <!-- 语言切换逻辑 -->
+    <script>
+      let currentLang = 'zh-CN';  // 默认语言
+      let translations = null;  // 存储翻译数据
+      
+      // 添加点击计数相关变量
+      let clickCount = 0;
+      let lastClickTime = 0;
+      const CLICK_THRESHOLD = 5;  // 需要点击的次数
+      const TIME_WINDOW = 2000;    // 时间窗口（毫秒）
+      const ACTIVATION_CODE = 'youngcity';  // 激活码
+
+      // 初始化激活码模态框
+      const activationModal = new bootstrap.Modal(document.getElementById('activationModal'));
+
+      // 处理隐藏区域点击
+      document.querySelector('#secretArea').addEventListener('click', (e) => {
+        const currentTime = Date.now();
+        
+        // 如果距离上次点击超过2秒，重置计数
+        if (currentTime - lastClickTime > TIME_WINDOW) {
+          clickCount = 0;
+        }
+        
+        clickCount++;
+        lastClickTime = currentTime;
+        
+        // 如果在2秒内点击达到5次
+        if (clickCount >= CLICK_THRESHOLD) {
+          clickCount = 0;  // 重置计数
+          activationModal.show(); // 显示激活码输入模态框
+        }
+      });
+
+      // 处理激活按钮点击
+      document.getElementById('activateButton').addEventListener('click', () => {
+        const code = document.getElementById('activationCodeInput').value;
+        if (code === ACTIVATION_CODE) {
+          // 发送激活消息
+          parent.postMessage({
+            pluginMessage: {
+              type: 'activate-subscription'
+            }
+          }, '*');
+          activationModal.hide();
+          alert('激活成功！');
+        } else {
+          alert('激活码错误，请重试！');
+        }
+      });
+
+      // 获取当前语言
+      function getCurrentLang() {
+        return currentLang;
+      }
+
+      // 切换语言
+      function switchLanguage(lang) {
+        currentLang = lang;
+        // 发送消息到插件保存语言设置
+        parent.postMessage({
+          pluginMessage: {
+            type: 'set-language',
+            lang: lang
+          }
+        }, '*');
+      }
+
+      // 更新界面文案
+      function updateUITexts() {
+        if (!translations) return;
+        
+        // 更新标题
+        document.title = translations.title;
+        
+        // 更新搜索区域
+        document.querySelector('label[for="searchInput"]').textContent = translations.search.label;
+        document.querySelector('#searchInput').placeholder = translations.search.placeholder;
+        
+        // 更新地区选择
+        document.querySelector('label[for="countrySelect"]').textContent = translations.region.label;
+        const regionOptions = document.querySelectorAll('#countrySelect option');
+        regionOptions.forEach(option => {
+          option.textContent = translations.region.options[option.value];
+        });
+        
+        // 更新布局设置
+        document.querySelector('label[for="iconSizeInput"]').textContent = translations.layout.iconSize;
+        document.querySelector('label[for="spacingInput"]').textContent = translations.layout.spacing;
+        document.querySelector('label[for="screenshotWidthInput"]').textContent = translations.layout.screenshotWidth;
+        
+        // 更新按钮文本
+        const createLayoutBtn = document.querySelector('#createLayoutBtn');
+        if (createLayoutBtn.textContent === '订阅解锁' || createLayoutBtn.textContent === 'Subscribe') {
+          createLayoutBtn.textContent = translations.button.subscribe;
+        } else {
+          createLayoutBtn.textContent = translations.button.collect;
+        }
+      }
+
+      // 将语言切换函数添加到全局作用域
+      window.handleLanguageChange = function(lang) {
+        if (lang !== currentLang) {
+          // 切换语言
+          switchLanguage(lang);
+          
+          // 更新下拉菜单项的激活状态
+          document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.classList.toggle('active', item.textContent === (lang === 'zh-CN' ? '中文' : 'English'));
+          });
+        }
+      };
+
+      // 初始化语言设置
+      function initializeLanguage() {
+        // 从插件获取保存的语言设置
+        parent.postMessage({
+          pluginMessage: {
+            type: 'get-language'
+          }
+        }, '*');
+      }
+
+      // 扩展消息处理
+      const originalOnMessage = window.onmessage;
+      window.onmessage = (event) => {
+        const msg = event.data.pluginMessage;
+        if (!msg) return;
+
+        // 处理语言更新消息
+        if (msg.type === 'language-update') {
+          currentLang = msg.lang;
+          translations = msg.translations;
+          updateUITexts();
+          
+          // 更新下拉菜单项的激活状态
+          document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.classList.toggle('active', item.textContent === (currentLang === 'zh-CN' ? '中文' : 'English'));
+          });
+        }
+
+        // 调用原始的消息处理函数
+        if (originalOnMessage) {
+          originalOnMessage(event);
+        }
+      };
+
+      // 等待 DOM 加载完成后初始化
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeLanguage);
+      } else {
+        initializeLanguage();
+      }
     </script>
   </body>
 </html> 
