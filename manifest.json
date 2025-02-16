@@ -1,0 +1,26 @@
+{
+  "name": "Super Screenshot",
+  "id": "1234567890",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://itunes.apple.com",
+      "https://is1-ssl.mzstatic.com",
+      "https://is2-ssl.mzstatic.com",
+      "https://is3-ssl.mzstatic.com",
+      "https://is4-ssl.mzstatic.com",
+      "https://is5-ssl.mzstatic.com",
+      "https://apps.apple.com",
+      "https://cdn.jsdelivr.net",
+      "https://home.yosign.cn:7043",
+      "https://*.mzstatic.com"
+    ],
+    "devAllowedDomains": [
+      "http://localhost:7080"
+    ],
+    "reasoning": "The plugin requires access to a local proxy server to fetch app screenshots from third-party APIs while avoiding CORS issues during development."
+  }
+} 

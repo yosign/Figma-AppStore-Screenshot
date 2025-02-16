@@ -1,0 +1,16 @@
+{
+  "name": "itunes-app-layout",
+  "version": "1.0.0",
+  "description": "Figma plugin for iTunes app layout",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json -w"
+  },
+  "dependencies": {
+    "@figma/plugin-typings": "^1.79.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+} 
